@@ -1,0 +1,9 @@
+when:
+  - event: pull_request
+
+steps:
+  - name: docker-build
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      repo: registry.example.com/example/encapi
+      dry_run: true

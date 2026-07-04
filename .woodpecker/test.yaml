@@ -1,0 +1,35 @@
+when:
+  - event: pull_request
+
+steps:
+  - name: lint
+    image: golang:1.25
+    commands:
+      - make lint
+    backend_options:
+      kubernetes:
+        serviceAccountName: default
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 1
+          limits:
+            memory: 2Gi
+            cpu: 2
+
+  - name: test
+    image: golang:1.25
+    commands:
+      # Container-backed DB tests self-skip when Docker is unavailable in CI;
+      # they run in the docker-e2e path / locally.
+      - make test-short
+    backend_options:
+      kubernetes:
+        serviceAccountName: default
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 1
+          limits:
+            memory: 2Gi
+            cpu: 2
