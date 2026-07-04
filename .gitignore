@@ -1,0 +1,6 @@
+/bin/
+/dist/
+*.rpm
+*.zip
+encapi
+encapi-cli
