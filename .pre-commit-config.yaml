@@ -6,10 +6,22 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+      - id: check-merge-conflict
 
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
     hooks:
       - id: go-fmt
-      - id: go-vet
       - id: go-mod-tidy
+
+  # encapi has no root-level Go files (all under cmd/, internal/, pkg/), so the
+  # dnephin go-vet hook (which runs `go vet` at the repo root) fails with
+  # "no Go files". Vet the whole module instead, mirroring artifactapi.
+  - repo: local
+    hooks:
+      - id: go-vet
+        name: go vet
+        entry: go vet ./...
+        language: system
+        types: [go]
+        pass_filenames: false
