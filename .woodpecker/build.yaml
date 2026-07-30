@@ -5,5 +5,5 @@ steps:
   - name: docker-build
     image: woodpeckerci/plugin-docker-buildx
     settings:
-      repo: registry.example.com/example/encapi
+      repo: artifactapi.example.com/docker-internal/encapi
       dry_run: true

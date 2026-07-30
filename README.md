@@ -93,7 +93,7 @@ make test-short               # skip container-backed DB tests
 ## Releases
 
 - **`encapi` server image** — tagging `vX.Y.Z` builds and pushes
-  `registry.example.com/example/encapi:{tag,latest}` (distroless).
+  `artifactapi.example.com/docker-internal/encapi:{tag,latest}` (distroless).
 - **`encapi-cli` RPM** — the same tag builds an RPM (nfpm) and publishes it to
   the ArtifactAPI `rpm-internal` repo. Installs `encapi-cli`, the `encapi-enc`
   Puppet wrapper, and `/etc/encapi/enc.conf`.
