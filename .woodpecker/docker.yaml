@@ -10,6 +10,9 @@ steps:
       repo: artifactapi.example.com/docker-internal/encapi
       build_args:
         VERSION: ${CI_COMMIT_TAG}
+      buildkit_config: |
+        [registry."artifactapi.example.com"]
+          ca = ["/etc/docker/certs.d/artifactapi.example.com/ca.crt"]
       tags:
         - ${CI_COMMIT_TAG}
         - latest
