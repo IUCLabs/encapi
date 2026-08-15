@@ -3,7 +3,7 @@ when:
 
 steps:
   - name: docker-build
-    image: woodpeckerci/plugin-docker-buildx
+    image: artifactapi.example.com/docker-internal/plugin-docker-buildx:latest
     settings:
       repo: artifactapi.example.com/docker-internal/encapi
       dry_run: true

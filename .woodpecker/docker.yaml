@@ -4,7 +4,7 @@ when:
 
 steps:
   - name: docker-encapi
-    image: woodpeckerci/plugin-docker-buildx
+    image: artifactapi.example.com/docker-internal/plugin-docker-buildx:latest
     settings:
       registry: artifactapi.example.com
       repo: artifactapi.example.com/docker-internal/encapi
