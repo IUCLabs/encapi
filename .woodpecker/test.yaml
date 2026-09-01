@@ -6,6 +6,9 @@ steps:
     image: golang:1.25
     commands:
       - make lint
+    environment:
+      # golib lives on Gitea; skip the public proxy/sum db.
+      GOPRIVATE: git.example.com
     backend_options:
       kubernetes:
         serviceAccountName: default
@@ -23,6 +26,9 @@ steps:
       # Container-backed DB tests self-skip when Docker is unavailable in CI;
       # they run in the docker-e2e path / locally.
       - make test-short
+    environment:
+      # golib lives on Gitea; skip the public proxy/sum db.
+      GOPRIVATE: git.example.com
     backend_options:
       kubernetes:
         serviceAccountName: default

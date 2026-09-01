@@ -6,6 +6,9 @@ steps:
     image: registry.example.com/example/almalinux9-gobuilder:20260606
     commands:
       - uvx pre-commit run --all-files
+    environment:
+      # golib lives on Gitea; skip the public proxy/sum db.
+      GOPRIVATE: git.example.com
     backend_options:
       kubernetes:
         serviceAccountName: default
