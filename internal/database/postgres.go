@@ -6,9 +6,13 @@ package database
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/IUCLabs/golib/pg"
+
+	"github.com/IUCLabs/encapi/migrations"
 )
 
 // DB wraps a pgx connection pool.
@@ -16,56 +20,19 @@ type DB struct {
 	Pool *pgxpool.Pool
 }
 
-// New connects to Postgres, verifies the connection, and runs migrations.
-func New(dsn string) (*DB, error) {
-	pool, err := pgxpool.New(context.Background(), dsn)
+// New connects to Postgres, verifies the connection, and brings the schema up
+// to date from the embedded migrations before returning, so the server never
+// serves against a half-migrated database. log may be nil.
+func New(ctx context.Context, dsn string, log *slog.Logger) (*DB, error) {
+	pool, err := pg.NewMigrated(ctx, dsn, migrations.FS, pg.MigrateOptions{
+		LockName: migrations.LockName,
+		Logger:   log,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("connect to postgres: %w", err)
+		return nil, err
 	}
-	if err := pool.Ping(context.Background()); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("ping postgres: %w", err)
-	}
-
-	db := &DB{Pool: pool}
-	if err := db.migrate(); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("run migrations: %w", err)
-	}
-	return db, nil
+	return &DB{Pool: pool}, nil
 }
 
 // Close releases the pool.
 func (db *DB) Close() { db.Pool.Close() }
-
-func (db *DB) migrate() error {
-	_, err := db.Pool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS statuses (
-			name        TEXT PRIMARY KEY,
-			description TEXT NOT NULL DEFAULT '',
-			created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-
-		CREATE TABLE IF NOT EXISTS roles (
-			name           TEXT PRIMARY KEY,
-			description    TEXT NOT NULL DEFAULT '',
-			default_params JSONB NOT NULL DEFAULT '{}',
-			created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-
-		CREATE TABLE IF NOT EXISTS nodes (
-			certname    TEXT PRIMARY KEY,
-			role        TEXT NOT NULL REFERENCES roles(name) ON UPDATE CASCADE,
-			environment TEXT NOT NULL REFERENCES statuses(name) ON UPDATE CASCADE,
-			params      JSONB NOT NULL DEFAULT '{}',
-			created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-	`)
-	if err != nil {
-		return err
-	}
-	return nil
-}

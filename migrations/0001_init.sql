@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS statuses (
+	name        TEXT PRIMARY KEY,
+	description TEXT NOT NULL DEFAULT '',
+	created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS roles (
+	name           TEXT PRIMARY KEY,
+	description    TEXT NOT NULL DEFAULT '',
+	default_params JSONB NOT NULL DEFAULT '{}',
+	created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS nodes (
+	certname    TEXT PRIMARY KEY,
+	role        TEXT NOT NULL REFERENCES roles(name) ON UPDATE CASCADE,
+	environment TEXT NOT NULL REFERENCES statuses(name) ON UPDATE CASCADE,
+	params      JSONB NOT NULL DEFAULT '{}',
+	created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

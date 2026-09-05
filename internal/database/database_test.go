@@ -10,7 +10,11 @@ import (
 	"github.com/IUCLabs/encapi/pkg/models"
 )
 
-var testDB *DB
+// testDB is the shared throwaway database; testDSN reaches the same server.
+var (
+	testDB  *DB
+	testDSN string
+)
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
@@ -19,12 +23,13 @@ func TestMain(m *testing.M) {
 		// Docker unavailable: run so tests self-skip via requireDB.
 		os.Exit(m.Run())
 	}
-	db, err := New(dsn)
+	db, err := New(ctx, dsn, nil)
 	if err != nil {
 		terminate()
 		panic(err)
 	}
 	testDB = db
+	testDSN = dsn
 
 	code := m.Run()
 	db.Close()

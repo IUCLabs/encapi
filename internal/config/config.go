@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/IUCLabs/golib/pg"
 )
 
 // Config is the fully-resolved server configuration.
@@ -28,12 +30,11 @@ type Config struct {
 	DistroAPIURL string
 }
 
-// DatabaseDSN renders a libpq/pgx connection string.
+// DatabaseDSN renders a libpq/pgx connection string. The fields come from this
+// package rather than golib's pg.DSNFromEnv because encapi defaults DBUSER and
+// DBNAME to "encapi", where DSNFromEnv treats both as required.
 func (c *Config) DatabaseDSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		c.DBUser, c.DBPass, c.DBHost, c.DBPort, c.DBName, c.DBSSL,
-	)
+	return pg.DSN(c.DBHost, c.DBPort, c.DBUser, c.DBPass, c.DBName, c.DBSSL)
 }
 
 // Load reads configuration from the environment, applying defaults.

@@ -6,6 +6,11 @@ DIST    := dist
 OS      ?= $(shell go env GOOS)
 ARCH    ?= $(shell go env GOARCH)
 
+# git.example.com modules (golib) are fetched straight from Gitea, never via the
+# public proxy or sum db, which have no view of them. Exported here rather than
+# written with `go env -w`, so a fresh checkout needs no machine-local setup.
+export GOPRIVATE := git.example.com
+
 GO_VERSION_REQUIRED := 1.23
 GO_VERSION_ACTUAL := $(shell go version | sed 's/go version go\([0-9]*\.[0-9]*\).*/\1/')
 
@@ -28,7 +33,7 @@ test: check-go
 
 # Fast suite: skips the database package's container-backed tests.
 test-short: check-go
-	go test -race -count=1 ./internal/config/... ./internal/enc/... ./internal/distro/... ./internal/server/... ./internal/cli/... ./pkg/...
+	go test -race -count=1 ./internal/config/... ./internal/enc/... ./internal/distro/... ./internal/server/... ./internal/cli/... ./migrations/... ./pkg/...
 
 lint: check-go
 	go vet ./...

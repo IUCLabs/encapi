@@ -27,7 +27,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := database.New(cfg.DatabaseDSN())
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	db, err := database.New(ctx, cfg.DatabaseDSN(), slog.Default())
 	if err != nil {
 		slog.Error("connect database", "err", err)
 		os.Exit(1)
@@ -39,9 +42,6 @@ func main() {
 	}
 
 	srv := server.New(db, distro.New(cfg.DistroAPIURL), cfg.WriteToken)
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	if err := srv.ListenAndServe(ctx, cfg.ListenAddr); err != nil {
 		slog.Error("server", "err", err)

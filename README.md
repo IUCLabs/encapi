@@ -26,6 +26,27 @@ The Terraform provider lives in a sibling repo:
 Foreign keys guarantee a node can only reference a role/status that exists, and
 a role/status in use cannot be deleted.
 
+## Schema migrations
+
+The SQL lives in [`migrations/`](migrations), is embedded in the `encapi`
+binary, and is applied at startup before the server listens — there is no
+mirrored copy in the deployment to drift out of sync.
+
+The runner is [`golib/pg`](https://github.com/IUCLabs/golib)'s
+`pg.NewMigrated`: encapi owns the SQL, the shared library owns the mechanics.
+Each start takes `pg_advisory_lock` on a key derived from the lock name
+`encapi-migrations`, creates `schema_migrations` (`version`, `applied_at`) if
+missing, and applies every embedded file whose filename is not yet recorded — in
+lexical (version) order, each file's SQL and its tracking row in one transaction
+— then unlocks. Replicas starting together queue on the lock and then find
+nothing to do.
+
+A file the live database already satisfies but `schema_migrations` does not
+record is re-run, which is how the pre-migration schema is adopted: migrations
+are `IF NOT EXISTS`-guarded, so the re-run is a no-op that only lands the
+tracking row. Add schema changes as a new numbered file; never edit an applied
+one.
+
 ## ENC output
 
 `encapi` renders two shapes from the same data:
@@ -89,6 +110,22 @@ docker compose up -d          # postgres + encapi
 make test                     # full suite (Postgres via testcontainers)
 make test-short               # skip container-backed DB tests
 ```
+
+### `GOPRIVATE`
+
+encapi depends on `github.com/IUCLabs/golib`, which is served by Gitea and is
+unknown to `proxy.golang.org` / `sum.golang.org`. Module resolution therefore
+needs:
+
+```
+export GOPRIVATE=git.example.com
+```
+
+The `Makefile` exports it for every target, and the `Dockerfile` and the
+woodpecker Go steps set it themselves, so `make build|test|lint` and CI work on
+a clean checkout. Only bare `go` commands run outside `make` need it in your
+shell — set it there (or in your shell profile) rather than with `go env -w`,
+which is machine state this repo cannot carry.
 
 ## Releases
 
