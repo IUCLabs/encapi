@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/IUCLabs/encapi/internal/auth"
 	"github.com/IUCLabs/encapi/internal/distro"
 	"github.com/IUCLabs/encapi/pkg/models"
 )
@@ -34,20 +35,28 @@ type Store interface {
 	DeleteNode(ctx context.Context, certname string) error
 }
 
-// Server holds handler dependencies.
-type Server struct {
-	store      Store
-	resolver   distro.Resolver
-	writeToken string
+// Auth configures write authentication. With neither WriteToken nor OIDC set,
+// all writes fail closed. OIDC must be built with both audiences allowed.
+type Auth struct {
+	WriteToken      string
+	OIDC            *auth.BearerOIDC
+	Audience        string
+	TestingAudience string
 }
 
-// New builds a Server. writeToken guards mutating endpoints; an empty token
-// fails all writes closed.
-func New(store Store, resolver distro.Resolver, writeToken string) *Server {
+// Server holds handler dependencies.
+type Server struct {
+	store    Store
+	resolver distro.Resolver
+	auth     Auth
+}
+
+// New builds a Server.
+func New(store Store, resolver distro.Resolver, a Auth) *Server {
 	if resolver == nil {
 		resolver = distro.Noop{}
 	}
-	return &Server{store: store, resolver: resolver, writeToken: writeToken}
+	return &Server{store: store, resolver: resolver, auth: a}
 }
 
 // Router returns the fully-wired HTTP handler.
@@ -75,8 +84,9 @@ func (s *Server) Router() http.Handler {
 	r.Get("/api/v1/nodes/{certname}", s.getNode)
 
 	// --- writes (token-guarded) ---
+	r.With(s.requireWrite(true)).Put("/api/v1/nodes/{certname}/environment", s.putNodeEnvironment)
 	r.Group(func(r chi.Router) {
-		r.Use(s.requireToken)
+		r.Use(s.requireWrite(false))
 		r.Put("/api/v1/roles/{name}", s.putRole)
 		r.Delete("/api/v1/roles/{name}", s.deleteRole)
 		r.Put("/api/v1/statuses/{name}", s.putStatus)

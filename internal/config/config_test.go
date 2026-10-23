@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestLoadDefaults(t *testing.T) {
-	for _, k := range []string{"LISTEN_ADDR", "DBHOST", "DBPORT", "DBUSER", "DBPASS", "DBNAME", "DBSSL", "ENCAPI_WRITE_TOKEN", "ENCAPI_DISTRO_API_URL"} {
+	for _, k := range []string{"LISTEN_ADDR", "DBHOST", "DBPORT", "DBUSER", "DBPASS", "DBNAME", "DBSSL", "ENCAPI_WRITE_TOKEN", "ENCAPI_DISTRO_API_URL", "ENCAPI_OIDC_ISSUER", "ENCAPI_OIDC_AUDIENCE", "ENCAPI_OIDC_TESTING_AUDIENCE"} {
 		t.Setenv(k, "")
 	}
 	c, err := Load()
@@ -18,6 +18,9 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if c.WriteToken != "" {
 		t.Errorf("WriteToken = %q, want empty", c.WriteToken)
+	}
+	if c.OIDCIssuer != "" || c.OIDCAudience != "encapi" || c.OIDCTestingAudience != "encapi-testing" {
+		t.Errorf("OIDC defaults = %q %q %q", c.OIDCIssuer, c.OIDCAudience, c.OIDCTestingAudience)
 	}
 }
 

@@ -37,6 +37,7 @@ Usage:
   encapi-cli node list
   encapi-cli node get <certname>
   encapi-cli node set <certname> --role <r> --env <e> [--param k=v ...]
+  encapi-cli node set-env <certname> <environment>
   encapi-cli node delete <certname>
   encapi-cli role list
   encapi-cli role get <name>
@@ -55,7 +56,7 @@ Params:
 
 Environment:
   ENCAPI_URL           encapi base URL (default http://localhost:8000)
-  ENCAPI_WRITE_TOKEN   bearer token, required for writes
+  ENCAPI_WRITE_TOKEN   bearer token (static token or Vault identity JWT), required for writes
 `
 
 // Run executes the CLI and returns a process exit code.

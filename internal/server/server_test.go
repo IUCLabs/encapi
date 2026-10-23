@@ -111,7 +111,7 @@ func testServer() (*httptest.Server, *fakeStore) {
 	f.statuses["production"] = models.Status{Name: "production"}
 	f.roles["roles::infra::storage::vault"] = models.Role{Name: "roles::infra::storage::vault"}
 	f.nodes["h1.example"] = models.Node{Certname: "h1.example", Role: "roles::infra::storage::vault", Environment: "testing"}
-	srv := New(f, nil, "s3cret")
+	srv := New(f, nil, Auth{WriteToken: "s3cret"})
 	return httptest.NewServer(srv.Router()), f
 }
 
@@ -164,7 +164,7 @@ func TestWriteBareTokenHeader(t *testing.T) {
 
 func TestWritesDisabledWithoutServerToken(t *testing.T) {
 	f := newFake()
-	srv := New(f, nil, "") // no token configured
+	srv := New(f, nil, Auth{}) // no auth configured
 	ts := httptest.NewServer(srv.Router())
 	defer ts.Close()
 	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/roles/r", strings.NewReader(`{}`))

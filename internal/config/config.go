@@ -24,6 +24,13 @@ type Config struct {
 	// When empty, writes are refused entirely (fail-closed).
 	WriteToken string
 
+	// OIDCIssuer enables Vault identity JWTs as write credentials. Tokens
+	// with OIDCAudience get full write access; tokens with
+	// OIDCTestingAudience may only set a node's environment to "testing".
+	OIDCIssuer          string
+	OIDCAudience        string
+	OIDCTestingAudience string
+
 	// DistroAPIURL, when set, points encapi at an external kickstart/distro
 	// API that resolves per-host provisioning params (epel, os release, ...).
 	// Left empty, no distro params are injected into ENC output.
@@ -54,6 +61,10 @@ func Load() (*Config, error) {
 		DBSSL:        getenv("DBSSL", "disable"),
 		WriteToken:   os.Getenv("ENCAPI_WRITE_TOKEN"),
 		DistroAPIURL: os.Getenv("ENCAPI_DISTRO_API_URL"),
+
+		OIDCIssuer:          os.Getenv("ENCAPI_OIDC_ISSUER"),
+		OIDCAudience:        getenv("ENCAPI_OIDC_AUDIENCE", "encapi"),
+		OIDCTestingAudience: getenv("ENCAPI_OIDC_TESTING_AUDIENCE", "encapi-testing"),
 	}, nil
 }
 
