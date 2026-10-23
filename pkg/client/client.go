@@ -169,6 +169,11 @@ func (c *Client) PutNode(ctx context.Context, n *models.Node) (*models.Node, err
 	var out models.Node
 	return &out, c.do(ctx, http.MethodPut, "/api/v1/nodes/"+url.PathEscape(n.Certname), n, &out)
 }
+func (c *Client) SetNodeEnvironment(ctx context.Context, certname, environment string) (*models.Node, error) {
+	var out models.Node
+	body := map[string]string{"environment": environment}
+	return &out, c.do(ctx, http.MethodPut, "/api/v1/nodes/"+url.PathEscape(certname)+"/environment", body, &out)
+}
 func (c *Client) DeleteNode(ctx context.Context, certname string) error {
 	return c.do(ctx, http.MethodDelete, "/api/v1/nodes/"+url.PathEscape(certname), nil, nil)
 }

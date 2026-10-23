@@ -34,6 +34,10 @@ func mapErr(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "not found")
 		return
 	}
+	if errors.Is(err, database.ErrInvalidReference) {
+		writeError(w, http.StatusUnprocessableEntity, database.ErrInvalidReference.Error())
+		return
+	}
 	writeError(w, http.StatusInternalServerError, err.Error())
 }
 
@@ -208,6 +212,32 @@ func (s *Server) putNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.UpsertNode(r.Context(), &node); err != nil {
+		mapErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, node)
+}
+
+// putNodeEnvironment changes only a node's environment. Testing-scoped tokens
+// may only move a node to "testing".
+func (s *Server) putNodeEnvironment(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Environment string `json:"environment"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
+		return
+	}
+	if body.Environment == "" {
+		writeError(w, http.StatusBadRequest, "environment is required")
+		return
+	}
+	if r.Context().Value(scopeKey{}) != scopeFull && body.Environment != "testing" {
+		writeError(w, http.StatusForbidden, "token may only set environment to testing")
+		return
+	}
+	node, err := s.store.SetNodeEnvironment(r.Context(), chi.URLParam(r, "certname"), body.Environment)
+	if err != nil {
 		mapErr(w, err)
 		return
 	}

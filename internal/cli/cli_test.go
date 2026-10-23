@@ -90,6 +90,15 @@ func (m *memStore) GetNode(_ context.Context, c string) (*models.Node, error) {
 	}
 	return &n, nil
 }
+func (m *memStore) SetNodeEnvironment(_ context.Context, c, env string) (*models.Node, error) {
+	n, ok := m.nodes[c]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	n.Environment = env
+	m.nodes[c] = n
+	return &n, nil
+}
 func (m *memStore) ListNodes(context.Context) ([]models.Node, error) {
 	out := []models.Node{}
 	for _, n := range m.nodes {
@@ -115,7 +124,7 @@ func run(t *testing.T, env Env, args ...string) (int, string, string) {
 func serverEnv(t *testing.T) (Env, *memStore) {
 	t.Helper()
 	store := newMem()
-	srv := server.New(store, distro.Noop{}, "tok")
+	srv := server.New(store, distro.Noop{}, server.Auth{WriteToken: "tok"})
 	ts := httptest.NewServer(srv.Router())
 	t.Cleanup(ts.Close)
 	return Env{URL: ts.URL, Token: "tok"}, store
@@ -155,6 +164,22 @@ func TestNodeSetAndClassify(t *testing.T) {
 	}
 	if !strings.Contains(out, "- roles::base") || !strings.Contains(out, "enc_role") {
 		t.Errorf("classify output missing expected fields:\n%s", out)
+	}
+}
+
+func TestNodeSetEnvKeepsRole(t *testing.T) {
+	env, store := serverEnv(t)
+	if code, _, errb := run(t, env, "node", "set", "web1.example", "--role", "roles::base", "--env", "production"); code != 0 {
+		t.Fatalf("node set exit %d: %s", code, errb)
+	}
+	if code, _, errb := run(t, env, "node", "set-env", "web1.example", "testing"); code != 0 {
+		t.Fatalf("set-env exit %d: %s", code, errb)
+	}
+	if n := store.nodes["web1.example"]; n.Environment != "testing" || n.Role != "roles::base" {
+		t.Errorf("node = %+v", n)
+	}
+	if code, _, _ := run(t, env, "node", "set-env", "ghost", "testing"); code == 0 {
+		t.Error("set-env on unknown node should fail")
 	}
 }
 

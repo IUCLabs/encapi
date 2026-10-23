@@ -63,14 +63,23 @@ See [`docs/cutover.md`](docs/cutover.md) for the migration from Cobbler.
 
 ## API
 
-Reads are open. Writes require `Authorization: Bearer $ENCAPI_WRITE_TOKEN`
-(set the token in the server's environment; manage it in Vault).
+Reads are open. Writes require `Authorization: Bearer <token>`, where the
+token is either the static `ENCAPI_WRITE_TOKEN` or a Vault identity JWT from
+`ENCAPI_OIDC_ISSUER`:
+
+- aud `encapi` (`ENCAPI_OIDC_AUDIENCE`): full write access, like the static token.
+- aud `encapi-testing` (`ENCAPI_OIDC_TESTING_AUDIENCE`): only
+  `PUT /api/v1/nodes/{certname}/environment` with `{"environment":"testing"}`;
+  any other environment or write route returns 403.
+
+An unreachable issuer returns 503 for JWTs; the static token keeps working.
 
 ```
 GET    /healthz
 GET    /api/v1/nodes                      list nodes
 GET    /api/v1/nodes/{certname}           get node
 PUT    /api/v1/nodes/{certname}           upsert node        (token)
+PUT    /api/v1/nodes/{certname}/environment  set only the environment, {"environment":"…"}; 404 if unknown (token, or testing JWT for "testing")
 DELETE /api/v1/nodes/{certname}           delete node        (token)
 GET    /api/v1/nodes/{certname}/enc       reshaped ENC (YAML)
 GET    /cblr/svc/op/puppet/hostname/{h}   cobbler-wire ENC (YAML)
@@ -84,18 +93,24 @@ GET    /api/v1/statuses    ... /statuses/{name}   (PUT/DELETE token)
 |------------------------|---------------|------------------------------------------|
 | `LISTEN_ADDR`          | `:8000`       | listen address                           |
 | `DBHOST/DBPORT/DBUSER/DBPASS/DBNAME/DBSSL` | localhost/5432/encapi/encapi/encapi/disable | Postgres |
-| `ENCAPI_WRITE_TOKEN`   | *(unset)*     | bearer token for writes; unset = read-only |
+| `ENCAPI_WRITE_TOKEN`   | *(unset)*     | static bearer token for writes |
+| `ENCAPI_OIDC_ISSUER`   | *(unset)*     | OIDC issuer URL for JWT writes (e.g. `<vault>/v1/identity/oidc`); unset = JWTs disabled |
+| `ENCAPI_OIDC_AUDIENCE` | `encapi`      | JWT audience granting full write access |
+| `ENCAPI_OIDC_TESTING_AUDIENCE` | `encapi-testing` | JWT audience allowed only to set a node's environment to `testing` |
 | `ENCAPI_DISTRO_API_URL`| *(unset)*     | optional kickstart/distro API for provisioning params |
+
+With neither `ENCAPI_WRITE_TOKEN` nor `ENCAPI_OIDC_ISSUER` set, writes are refused (read-only).
 
 ## CLI
 
 ```bash
 export ENCAPI_URL=https://encapi.example.com
-export ENCAPI_WRITE_TOKEN=…            # only needed for writes
+export ENCAPI_WRITE_TOKEN=…            # static token or Vault identity JWT; only needed for writes
 
 encapi-cli status set production
 encapi-cli role set roles::infra::storage::minio --param 'replicas=4' --param 'epel="9"'
 encapi-cli node set host2100.int.example.net --role roles::infra::storage::minio --env production
+encapi-cli node set-env host2100.int.example.net testing
 encapi-cli classify host2100.int.example.net
 
 # one-shot migration from the live Cobbler estate:

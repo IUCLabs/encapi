@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/IUCLabs/encapi/internal/auth"
 	"github.com/IUCLabs/encapi/internal/config"
 	"github.com/IUCLabs/encapi/internal/database"
 	"github.com/IUCLabs/encapi/internal/distro"
@@ -37,11 +38,16 @@ func main() {
 	}
 	defer db.Close()
 
-	if cfg.WriteToken == "" {
-		slog.Warn("ENCAPI_WRITE_TOKEN is not set; write endpoints are disabled")
+	if cfg.WriteToken == "" && cfg.OIDCIssuer == "" {
+		slog.Warn("neither ENCAPI_WRITE_TOKEN nor ENCAPI_OIDC_ISSUER is set; write endpoints are disabled")
 	}
 
-	srv := server.New(db, distro.New(cfg.DistroAPIURL), cfg.WriteToken)
+	srv := server.New(db, distro.New(cfg.DistroAPIURL), server.Auth{
+		WriteToken:      cfg.WriteToken,
+		OIDC:            auth.NewBearerOIDC(cfg.OIDCIssuer, []string{cfg.OIDCAudience, cfg.OIDCTestingAudience}),
+		Audience:        cfg.OIDCAudience,
+		TestingAudience: cfg.OIDCTestingAudience,
+	})
 
 	if err := srv.ListenAndServe(ctx, cfg.ListenAddr); err != nil {
 		slog.Error("server", "err", err)

@@ -1,31 +1,80 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
+	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/IUCLabs/encapi/internal/auth"
 )
 
-// requireToken enforces a static bearer token on mutating endpoints. The token
-// is accepted either as "Authorization: Bearer <token>" or a bare "token"
-// header. When no server token is configured, all writes are refused.
-func (s *Server) requireToken(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.writeToken == "" {
-			writeError(w, http.StatusServiceUnavailable, "writes disabled: ENCAPI_WRITE_TOKEN not set")
-			return
+type scope int
+
+const (
+	scopeTesting scope = iota + 1
+	scopeFull
+)
+
+type scopeKey struct{}
+
+// requireWrite authenticates a write: the static token or a JWT with the full
+// audience grants scopeFull, a JWT with the testing audience grants
+// scopeTesting, which only routes registered with allowTesting accept.
+func (s *Server) requireWrite(allowTesting bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			sc, ok := s.authenticate(w, r)
+			if !ok {
+				return
+			}
+			if sc == scopeTesting && !allowTesting {
+				writeError(w, http.StatusForbidden, "token audience not permitted on this route")
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), scopeKey{}, sc)))
+		})
+	}
+}
+
+func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (scope, bool) {
+	a := s.auth
+	if a.WriteToken == "" && a.OIDC == nil {
+		writeError(w, http.StatusServiceUnavailable, "writes disabled: neither ENCAPI_WRITE_TOKEN nor ENCAPI_OIDC_ISSUER set")
+		return 0, false
+	}
+	presented := bearer(r)
+	if presented == "" {
+		writeError(w, http.StatusUnauthorized, "invalid or missing write token")
+		return 0, false
+	}
+	if a.WriteToken != "" && subtle.ConstantTimeCompare([]byte(presented), []byte(a.WriteToken)) == 1 {
+		return scopeFull, true
+	}
+	if a.OIDC != nil {
+		tok, err := a.OIDC.Verify(r.Context(), presented)
+		if errors.Is(err, auth.ErrIssuerUnavailable) {
+			writeError(w, http.StatusServiceUnavailable, "token issuer unavailable")
+			return 0, false
 		}
-		presented := bearer(r)
-		if presented == "" || subtle.ConstantTimeCompare([]byte(presented), []byte(s.writeToken)) != 1 {
-			writeError(w, http.StatusUnauthorized, "invalid or missing write token")
-			return
+		if err == nil {
+			sc := scopeTesting
+			if slices.Contains(tok.Audience, a.Audience) {
+				sc = scopeFull
+			}
+			slog.Info("bearer token accepted", "sub", tok.Subject, "aud", tok.Audience, "method", r.Method, "path", r.URL.Path)
+			return sc, true
 		}
-		next.ServeHTTP(w, r)
-	})
+		slog.Info("bearer token rejected", "error", err)
+	}
+	writeError(w, http.StatusUnauthorized, "invalid or missing write token")
+	return 0, false
 }
 
 func bearer(r *http.Request) string {
