@@ -19,6 +19,7 @@ type fakeStore struct {
 	roles    map[string]models.Role
 	statuses map[string]models.Status
 	nodes    map[string]models.Node
+	nodeErr  error // returned by node writes when set
 }
 
 func newFake() *fakeStore {
@@ -80,8 +81,23 @@ func (f *fakeStore) DeleteStatus(_ context.Context, name string) error {
 	return nil
 }
 func (f *fakeStore) UpsertNode(_ context.Context, n *models.Node) error {
+	if f.nodeErr != nil {
+		return f.nodeErr
+	}
 	f.nodes[n.Certname] = *n
 	return nil
+}
+func (f *fakeStore) SetNodeEnvironment(_ context.Context, certname, env string) (*models.Node, error) {
+	if f.nodeErr != nil {
+		return nil, f.nodeErr
+	}
+	n, ok := f.nodes[certname]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	n.Environment = env
+	f.nodes[certname] = n
+	return &n, nil
 }
 func (f *fakeStore) GetNode(_ context.Context, certname string) (*models.Node, error) {
 	n, ok := f.nodes[certname]

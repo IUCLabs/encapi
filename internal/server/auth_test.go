@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,6 +10,7 @@ import (
 	"time"
 
 	"github.com/IUCLabs/encapi/internal/auth"
+	"github.com/IUCLabs/encapi/internal/database"
 	"github.com/IUCLabs/encapi/internal/testsupport"
 	"github.com/IUCLabs/encapi/pkg/models"
 )
@@ -109,5 +112,29 @@ func TestOIDCIssuerDown503(t *testing.T) {
 	}
 	if got := put(t, ts.URL+"/api/v1/nodes/h1.example/environment", "s3cret", `{"environment":"testing"}`); got != http.StatusOK {
 		t.Errorf("static token with issuer down: status %d, want 200", got)
+	}
+}
+
+func TestUnknownReferenceIs422(t *testing.T) {
+	ts, f, _ := oidcServer(t)
+	f.nodeErr = fmt.Errorf("upsert node: %w", database.ErrInvalidReference)
+	for _, c := range []struct{ url, body string }{
+		{ts.URL + "/api/v1/nodes/h1.example/environment", `{"environment":"ghost"}`},
+		{ts.URL + "/api/v1/nodes/h2", `{"role":"roles::base","environment":"ghost"}`},
+	} {
+		req, _ := http.NewRequest(http.MethodPut, c.url, strings.NewReader(c.body))
+		req.Header.Set("Authorization", "Bearer s3cret")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusUnprocessableEntity {
+			t.Errorf("PUT %s: status %d, want 422", c.url, resp.StatusCode)
+		}
+		if strings.Contains(string(body), "upsert node") {
+			t.Errorf("PUT %s leaks internal error: %s", c.url, body)
+		}
 	}
 }

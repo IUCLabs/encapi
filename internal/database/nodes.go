@@ -6,9 +6,23 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/IUCLabs/encapi/pkg/models"
 )
+
+// ErrInvalidReference is returned when a node names a role or environment that
+// does not exist.
+var ErrInvalidReference = errors.New("unknown role or environment")
+
+// fkErr maps a foreign-key violation to ErrInvalidReference.
+func fkErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return ErrInvalidReference
+	}
+	return err
+}
 
 // UpsertNode creates or updates a host-to-role assignment. The referenced role
 // and environment must already exist (enforced by foreign keys).
@@ -27,9 +41,33 @@ func (db *DB) UpsertNode(ctx context.Context, n *models.Node) error {
 		    updated_at = NOW()
 	`, n.Certname, n.Role, n.Environment, params)
 	if err != nil {
-		return fmt.Errorf("upsert node %q: %w", n.Certname, err)
+		return fmt.Errorf("upsert node %q: %w", n.Certname, fkErr(err))
 	}
 	return nil
+}
+
+// SetNodeEnvironment changes only a node's environment in a single statement and
+// returns the updated node, ErrNotFound, or ErrInvalidReference.
+func (db *DB) SetNodeEnvironment(ctx context.Context, certname, environment string) (*models.Node, error) {
+	var (
+		n      models.Node
+		params []byte
+	)
+	err := db.Pool.QueryRow(ctx, `
+		UPDATE nodes SET environment = $2, updated_at = NOW()
+		WHERE certname = $1
+		RETURNING certname, role, environment, params
+	`, certname, environment).Scan(&n.Certname, &n.Role, &n.Environment, &params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("set environment for node %q: %w", certname, fkErr(err))
+	}
+	if n.Params, err = unmarshalParams(params); err != nil {
+		return nil, fmt.Errorf("decode params for node %q: %w", certname, err)
+	}
+	return &n, nil
 }
 
 // GetNode returns a single node or ErrNotFound.

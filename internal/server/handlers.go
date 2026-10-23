@@ -34,6 +34,10 @@ func mapErr(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, "not found")
 		return
 	}
+	if errors.Is(err, database.ErrInvalidReference) {
+		writeError(w, http.StatusUnprocessableEntity, database.ErrInvalidReference.Error())
+		return
+	}
 	writeError(w, http.StatusInternalServerError, err.Error())
 }
 
@@ -232,13 +236,8 @@ func (s *Server) putNodeEnvironment(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "token may only set environment to testing")
 		return
 	}
-	node, err := s.store.GetNode(r.Context(), chi.URLParam(r, "certname"))
+	node, err := s.store.SetNodeEnvironment(r.Context(), chi.URLParam(r, "certname"), body.Environment)
 	if err != nil {
-		mapErr(w, err)
-		return
-	}
-	node.Environment = body.Environment
-	if err := s.store.UpsertNode(r.Context(), node); err != nil {
 		mapErr(w, err)
 		return
 	}

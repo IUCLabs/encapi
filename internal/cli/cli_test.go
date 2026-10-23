@@ -90,6 +90,15 @@ func (m *memStore) GetNode(_ context.Context, c string) (*models.Node, error) {
 	}
 	return &n, nil
 }
+func (m *memStore) SetNodeEnvironment(_ context.Context, c, env string) (*models.Node, error) {
+	n, ok := m.nodes[c]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	n.Environment = env
+	m.nodes[c] = n
+	return &n, nil
+}
 func (m *memStore) ListNodes(context.Context) ([]models.Node, error) {
 	out := []models.Node{}
 	for _, n := range m.nodes {

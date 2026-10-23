@@ -31,6 +31,7 @@ type Store interface {
 
 	UpsertNode(ctx context.Context, n *models.Node) error
 	GetNode(ctx context.Context, certname string) (*models.Node, error)
+	SetNodeEnvironment(ctx context.Context, certname, environment string) (*models.Node, error)
 	ListNodes(ctx context.Context) ([]models.Node, error)
 	DeleteNode(ctx context.Context, certname string) error
 }

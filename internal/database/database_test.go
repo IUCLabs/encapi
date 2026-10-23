@@ -127,13 +127,13 @@ func TestNodeCRUDAndForeignKeys(t *testing.T) {
 
 	// node referencing an unknown role must fail the FK
 	badRole := &models.Node{Certname: "h1", Role: "roles::ghost", Environment: "testing"}
-	if err := testDB.UpsertNode(ctx, badRole); err == nil {
-		t.Error("expected FK violation for unknown role")
+	if err := testDB.UpsertNode(ctx, badRole); !errors.Is(err, ErrInvalidReference) {
+		t.Errorf("UpsertNode unknown role = %v, want ErrInvalidReference", err)
 	}
 	// node referencing an unknown environment must fail the FK
 	badEnv := &models.Node{Certname: "h1", Role: "roles::base", Environment: "ghost"}
-	if err := testDB.UpsertNode(ctx, badEnv); err == nil {
-		t.Error("expected FK violation for unknown environment")
+	if err := testDB.UpsertNode(ctx, badEnv); !errors.Is(err, ErrInvalidReference) {
+		t.Errorf("UpsertNode unknown environment = %v, want ErrInvalidReference", err)
 	}
 
 	n := &models.Node{Certname: "h1", Role: "roles::base", Environment: "testing", Params: map[string]any{"x": "y"}}
@@ -166,5 +166,35 @@ func TestNodeCRUDAndForeignKeys(t *testing.T) {
 	}
 	if err := testDB.DeleteNode(ctx, "h1"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("DeleteNode missing = %v, want ErrNotFound", err)
+	}
+}
+
+func TestSetNodeEnvironment(t *testing.T) {
+	requireDB(t)
+	clean(t)
+	seed(t)
+	ctx := context.Background()
+	if err := testDB.UpsertStatus(ctx, &models.Status{Name: "production"}); err != nil {
+		t.Fatal(err)
+	}
+	n := &models.Node{Certname: "h1", Role: "roles::base", Environment: "production", Params: map[string]any{"x": "y"}}
+	if err := testDB.UpsertNode(ctx, n); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := testDB.SetNodeEnvironment(ctx, "h1", "testing")
+	if err != nil || got.Environment != "testing" || got.Role != "roles::base" || got.Params["x"] != "y" {
+		t.Fatalf("SetNodeEnvironment = %+v, %v", got, err)
+	}
+	stored, _ := testDB.GetNode(ctx, "h1")
+	if stored.Environment != "testing" || stored.Params["x"] != "y" {
+		t.Errorf("stored node = %+v", stored)
+	}
+
+	if _, err := testDB.SetNodeEnvironment(ctx, "h1", "ghost"); !errors.Is(err, ErrInvalidReference) {
+		t.Errorf("unknown environment = %v, want ErrInvalidReference", err)
+	}
+	if _, err := testDB.SetNodeEnvironment(ctx, "missing", "testing"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown node = %v, want ErrNotFound", err)
 	}
 }
