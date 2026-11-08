@@ -95,7 +95,22 @@ func (m *memStore) SetNodeEnvironment(_ context.Context, c, env string) (*models
 	if !ok {
 		return nil, database.ErrNotFound
 	}
+	if n.Environment != "testing" && env == "testing" {
+		n.PreviousEnvironment = n.Environment
+	}
 	n.Environment = env
+	m.nodes[c] = n
+	return &n, nil
+}
+func (m *memStore) RestoreFromTesting(_ context.Context, c string) (*models.Node, error) {
+	n, ok := m.nodes[c]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	if n.Environment != "testing" {
+		return nil, database.ErrNotInTesting
+	}
+	n.Environment, n.PreviousEnvironment = n.PreviousEnvironment, ""
 	m.nodes[c] = n
 	return &n, nil
 }
@@ -180,6 +195,16 @@ func TestNodeSetEnvKeepsRole(t *testing.T) {
 	}
 	if code, _, _ := run(t, env, "node", "set-env", "ghost", "testing"); code == 0 {
 		t.Error("set-env on unknown node should fail")
+	}
+
+	if code, _, errb := run(t, env, "node", "restore-env", "web1.example"); code != 0 {
+		t.Fatalf("restore-env exit %d: %s", code, errb)
+	}
+	if n := store.nodes["web1.example"]; n.Environment != "production" {
+		t.Errorf("after restore-env node = %+v", n)
+	}
+	if code, _, errb := run(t, env, "node", "restore-env", "web1.example"); code == 0 || !strings.Contains(errb, "not in testing") {
+		t.Errorf("restore-env on non-testing node: exit %d, stderr %q", code, errb)
 	}
 }
 

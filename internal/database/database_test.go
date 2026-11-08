@@ -198,3 +198,73 @@ func TestSetNodeEnvironment(t *testing.T) {
 		t.Errorf("unknown node = %v, want ErrNotFound", err)
 	}
 }
+
+func TestRestoreFromTesting(t *testing.T) {
+	requireDB(t)
+	clean(t)
+	seed(t)
+	ctx := context.Background()
+	for _, s := range []string{"production", "develop"} {
+		if err := testDB.UpsertStatus(ctx, &models.Status{Name: s}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := testDB.UpsertNode(ctx, &models.Node{Certname: "h1", Role: "roles::base", Environment: "production"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := testDB.RestoreFromTesting(ctx, "h1"); !errors.Is(err, ErrNotInTesting) {
+		t.Errorf("restore non-testing = %v, want ErrNotInTesting", err)
+	}
+	if got, err := testDB.SetNodeEnvironment(ctx, "h1", "testing"); err != nil || got.PreviousEnvironment != "production" {
+		t.Fatalf("set testing = %+v, %v", got, err)
+	}
+	// re-entering testing must not overwrite the remembered environment
+	if got, _ := testDB.SetNodeEnvironment(ctx, "h1", "testing"); got.PreviousEnvironment != "production" {
+		t.Errorf("repeat set testing previous = %q, want production", got.PreviousEnvironment)
+	}
+	got, err := testDB.RestoreFromTesting(ctx, "h1")
+	if err != nil || got.Environment != "production" || got.PreviousEnvironment != "" || got.Role != "roles::base" {
+		t.Fatalf("restore = %+v, %v", got, err)
+	}
+	if stored, _ := testDB.GetNode(ctx, "h1"); stored.Environment != "production" || stored.PreviousEnvironment != "" {
+		t.Errorf("stored after restore = %+v", stored)
+	}
+
+	// leaving testing by any other route clears the remembered environment
+	_, _ = testDB.SetNodeEnvironment(ctx, "h1", "testing")
+	if got, _ := testDB.SetNodeEnvironment(ctx, "h1", "develop"); got.PreviousEnvironment != "" {
+		t.Errorf("leave testing previous = %q, want empty", got.PreviousEnvironment)
+	}
+
+	// PutNode follows the same rules
+	n := &models.Node{Certname: "h1", Role: "roles::base", Environment: "testing"}
+	if err := testDB.UpsertNode(ctx, n); err != nil || n.PreviousEnvironment != "develop" {
+		t.Fatalf("upsert testing = %+v, %v", n, err)
+	}
+	n = &models.Node{Certname: "h1", Role: "roles::base", Environment: "production"}
+	if err := testDB.UpsertNode(ctx, n); err != nil || n.PreviousEnvironment != "" {
+		t.Fatalf("upsert production = %+v, %v", n, err)
+	}
+
+	// a node created straight into testing has nothing to restore
+	if err := testDB.UpsertNode(ctx, &models.Node{Certname: "h2", Role: "roles::base", Environment: "testing"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := testDB.RestoreFromTesting(ctx, "h2"); !errors.Is(err, ErrNoPreviousEnvironment) {
+		t.Errorf("restore without previous = %v, want ErrNoPreviousEnvironment", err)
+	}
+	if _, err := testDB.RestoreFromTesting(ctx, "missing"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("restore unknown = %v, want ErrNotFound", err)
+	}
+
+	// deleting the remembered status drops the reference rather than blocking
+	_, _ = testDB.SetNodeEnvironment(ctx, "h1", "develop")
+	_, _ = testDB.SetNodeEnvironment(ctx, "h1", "testing")
+	if err := testDB.DeleteStatus(ctx, "develop"); err != nil {
+		t.Fatalf("delete remembered status: %v", err)
+	}
+	if _, err := testDB.RestoreFromTesting(ctx, "h1"); !errors.Is(err, ErrNoPreviousEnvironment) {
+		t.Errorf("restore after status delete = %v, want ErrNoPreviousEnvironment", err)
+	}
+}

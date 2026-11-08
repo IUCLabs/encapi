@@ -26,4 +26,7 @@ type Node struct {
 	Role        string         `json:"role"`
 	Environment string         `json:"environment"`
 	Params      map[string]any `json:"params,omitempty"`
+	// PreviousEnvironment is server-managed: the environment to restore when
+	// the node leaves testing.
+	PreviousEnvironment string `json:"previous_environment,omitempty"`
 }

@@ -2,13 +2,16 @@ package database
 
 import (
 	"context"
+	"io/fs"
 	"testing"
+
+	"github.com/IUCLabs/encapi/migrations"
 )
 
 // encapi's schema predates schema_migrations, so the first start after this
 // change re-applies 0001_init against a database that already has the tables.
 // The file is IF NOT EXISTS-guarded for exactly that: the run must succeed and
-// leave only the tracking row behind.
+// leave only the tracking rows behind.
 func TestMigrateAdoptsAnExistingSchema(t *testing.T) {
 	requireDB(t)
 	ctx := context.Background()
@@ -27,7 +30,8 @@ func TestMigrateAdoptsAnExistingSchema(t *testing.T) {
 	if err := db.Pool.QueryRow(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&n); err != nil {
 		t.Fatalf("count schema_migrations: %v", err)
 	}
-	if n != 1 {
-		t.Fatalf("schema_migrations rows = %d, want 1", n)
+	files, _ := fs.Glob(migrations.FS, "*.sql")
+	if n != len(files) {
+		t.Fatalf("schema_migrations rows = %d, want %d", n, len(files))
 	}
 }

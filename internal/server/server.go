@@ -32,6 +32,7 @@ type Store interface {
 	UpsertNode(ctx context.Context, n *models.Node) error
 	GetNode(ctx context.Context, certname string) (*models.Node, error)
 	SetNodeEnvironment(ctx context.Context, certname, environment string) (*models.Node, error)
+	RestoreFromTesting(ctx context.Context, certname string) (*models.Node, error)
 	ListNodes(ctx context.Context) ([]models.Node, error)
 	DeleteNode(ctx context.Context, certname string) error
 }
@@ -86,6 +87,7 @@ func (s *Server) Router() http.Handler {
 
 	// --- writes (token-guarded) ---
 	r.With(s.requireWrite(true)).Put("/api/v1/nodes/{certname}/environment", s.putNodeEnvironment)
+	r.With(s.requireWrite(true)).Delete("/api/v1/nodes/{certname}/environment/testing", s.restoreFromTesting)
 	r.Group(func(r chi.Router) {
 		r.Use(s.requireWrite(false))
 		r.Put("/api/v1/roles/{name}", s.putRole)

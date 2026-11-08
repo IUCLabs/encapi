@@ -95,7 +95,27 @@ func (f *fakeStore) SetNodeEnvironment(_ context.Context, certname, env string) 
 	if !ok {
 		return nil, database.ErrNotFound
 	}
+	switch {
+	case env != "testing":
+		n.PreviousEnvironment = ""
+	case n.Environment != "testing":
+		n.PreviousEnvironment = n.Environment
+	}
 	n.Environment = env
+	f.nodes[certname] = n
+	return &n, nil
+}
+func (f *fakeStore) RestoreFromTesting(_ context.Context, certname string) (*models.Node, error) {
+	n, ok := f.nodes[certname]
+	switch {
+	case !ok:
+		return nil, database.ErrNotFound
+	case n.Environment != "testing":
+		return nil, database.ErrNotInTesting
+	case n.PreviousEnvironment == "":
+		return nil, database.ErrNoPreviousEnvironment
+	}
+	n.Environment, n.PreviousEnvironment = n.PreviousEnvironment, ""
 	f.nodes[certname] = n
 	return &n, nil
 }

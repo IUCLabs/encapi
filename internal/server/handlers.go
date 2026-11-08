@@ -38,6 +38,10 @@ func mapErr(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnprocessableEntity, database.ErrInvalidReference.Error())
 		return
 	}
+	if errors.Is(err, database.ErrNotInTesting) || errors.Is(err, database.ErrNoPreviousEnvironment) {
+		writeError(w, http.StatusConflict, err.Error())
+		return
+	}
 	writeError(w, http.StatusInternalServerError, err.Error())
 }
 
@@ -237,6 +241,16 @@ func (s *Server) putNodeEnvironment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	node, err := s.store.SetNodeEnvironment(r.Context(), chi.URLParam(r, "certname"), body.Environment)
+	if err != nil {
+		mapErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, node)
+}
+
+// restoreFromTesting returns a testing node to the environment it had before.
+func (s *Server) restoreFromTesting(w http.ResponseWriter, r *http.Request) {
+	node, err := s.store.RestoreFromTesting(r.Context(), chi.URLParam(r, "certname"))
 	if err != nil {
 		mapErr(w, err)
 		return
