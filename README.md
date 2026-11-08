@@ -69,8 +69,9 @@ token is either the static `ENCAPI_WRITE_TOKEN` or a Vault identity JWT from
 
 - aud `encapi` (`ENCAPI_OIDC_AUDIENCE`): full write access, like the static token.
 - aud `encapi-testing` (`ENCAPI_OIDC_TESTING_AUDIENCE`): only
-  `PUT /api/v1/nodes/{certname}/environment` with `{"environment":"testing"}`;
-  any other environment or write route returns 403.
+  `PUT /api/v1/nodes/{certname}/environment` with `{"environment":"testing"}`
+  and `DELETE /api/v1/nodes/{certname}/environment/testing`; any other
+  environment or write route returns 403.
 
 An unreachable issuer returns 503 for JWTs; the static token keeps working.
 
@@ -80,6 +81,7 @@ GET    /api/v1/nodes                      list nodes
 GET    /api/v1/nodes/{certname}           get node
 PUT    /api/v1/nodes/{certname}           upsert node        (token)
 PUT    /api/v1/nodes/{certname}/environment  set only the environment, {"environment":"…"}; 404 if unknown (token, or testing JWT for "testing")
+DELETE /api/v1/nodes/{certname}/environment/testing  restore the environment held before testing; 409 if not in testing or none recorded (token or testing JWT)
 DELETE /api/v1/nodes/{certname}           delete node        (token)
 GET    /api/v1/nodes/{certname}/enc       reshaped ENC (YAML)
 GET    /cblr/svc/op/puppet/hostname/{h}   cobbler-wire ENC (YAML)

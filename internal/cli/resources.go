@@ -12,7 +12,7 @@ import (
 
 func nodeCmd(ctx context.Context, c *client.Client, args []string, stdout, stderr io.Writer) int {
 	if len(args) < 1 {
-		fmt.Fprintln(stderr, "usage: encapi-cli node <list|get|set|set-env|delete> ...")
+		fmt.Fprintln(stderr, "usage: encapi-cli node <list|get|set|set-env|restore-env|delete> ...")
 		return 2
 	}
 	switch args[0] {
@@ -42,6 +42,17 @@ func nodeCmd(ctx context.Context, c *client.Client, args []string, stdout, stder
 			return 2
 		}
 		n, err := c.SetNodeEnvironment(ctx, args[1], args[2])
+		if err != nil {
+			return fail(stderr, err)
+		}
+		printYAML(stdout, n)
+		return 0
+	case "restore-env":
+		if len(args) != 2 {
+			fmt.Fprintln(stderr, "usage: encapi-cli node restore-env <certname>")
+			return 2
+		}
+		n, err := c.RestoreFromTesting(ctx, args[1])
 		if err != nil {
 			return fail(stderr, err)
 		}

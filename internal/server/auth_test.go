@@ -138,3 +138,46 @@ func TestUnknownReferenceIs422(t *testing.T) {
 		}
 	}
 }
+
+func TestRestoreFromTestingScopes(t *testing.T) {
+	ts, f, iss := oidcServer(t)
+	testingTok := iss.Token(nil, "encapi-testing", "agent", time.Hour)
+	envURL := ts.URL + "/api/v1/nodes/h1.example/environment"
+	restore := func(certname, token string) (int, string) {
+		req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/v1/nodes/"+certname+"/environment/testing", nil)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(body)
+	}
+
+	if code, body := restore("h1.example", testingTok); code != http.StatusConflict || !strings.Contains(body, "not in testing") {
+		t.Errorf("restore non-testing: %d %s", code, body)
+	}
+	if got := put(t, envURL, testingTok, `{"environment":"testing"}`); got != http.StatusOK {
+		t.Fatalf("set testing: %d", got)
+	}
+	if code, _ := restore("h1.example", ""); code != http.StatusUnauthorized {
+		t.Errorf("restore without token: %d, want 401", code)
+	}
+	if code, body := restore("h1.example", testingTok); code != http.StatusOK || !strings.Contains(body, `"environment":"production"`) {
+		t.Errorf("testing token restore: %d %s", code, body)
+	}
+	if n := f.nodes["h1.example"]; n.Environment != "production" || n.PreviousEnvironment != "" || n.Params["k"] != "v" {
+		t.Errorf("node after restore = %+v", n)
+	}
+
+	f.nodes["h2.example"] = models.Node{Certname: "h2.example", Role: "roles::base", Environment: "testing"}
+	if code, body := restore("h2.example", testingTok); code != http.StatusConflict || !strings.Contains(body, "no previous environment") {
+		t.Errorf("restore without previous: %d %s", code, body)
+	}
+	if code, _ := restore("ghost", "s3cret"); code != http.StatusNotFound {
+		t.Errorf("restore unknown node: %d, want 404", code)
+	}
+}

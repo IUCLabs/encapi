@@ -75,3 +75,17 @@ func TestENCReturnsRawYAML(t *testing.T) {
 		t.Errorf("enc = %q", b)
 	}
 }
+
+func TestRestoreFromTesting(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/v1/nodes/h1/environment/testing" {
+			t.Errorf("got %s %s", r.Method, r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"certname":"h1","role":"r","environment":"production"}`))
+	}))
+	defer srv.Close()
+	n, err := New(srv.URL, "t").RestoreFromTesting(context.Background(), "h1")
+	if err != nil || n.Environment != "production" {
+		t.Fatalf("RestoreFromTesting = %+v, %v", n, err)
+	}
+}

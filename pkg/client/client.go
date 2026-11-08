@@ -174,6 +174,12 @@ func (c *Client) SetNodeEnvironment(ctx context.Context, certname, environment s
 	body := map[string]string{"environment": environment}
 	return &out, c.do(ctx, http.MethodPut, "/api/v1/nodes/"+url.PathEscape(certname)+"/environment", body, &out)
 }
+
+// RestoreFromTesting returns a testing node to its previous environment.
+func (c *Client) RestoreFromTesting(ctx context.Context, certname string) (*models.Node, error) {
+	var out models.Node
+	return &out, c.do(ctx, http.MethodDelete, "/api/v1/nodes/"+url.PathEscape(certname)+"/environment/testing", nil, &out)
+}
 func (c *Client) DeleteNode(ctx context.Context, certname string) error {
 	return c.do(ctx, http.MethodDelete, "/api/v1/nodes/"+url.PathEscape(certname), nil, nil)
 }

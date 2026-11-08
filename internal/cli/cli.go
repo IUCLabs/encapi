@@ -38,6 +38,7 @@ Usage:
   encapi-cli node get <certname>
   encapi-cli node set <certname> --role <r> --env <e> [--param k=v ...]
   encapi-cli node set-env <certname> <environment>
+  encapi-cli node restore-env <certname>      move a testing node back to its previous environment
   encapi-cli node delete <certname>
   encapi-cli role list
   encapi-cli role get <name>
