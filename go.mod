@@ -3,7 +3,7 @@ module github.com/IUCLabs/encapi
 go 1.25.9
 
 require (
-	github.com/IUCLabs/golib v0.1.0
+	github.com/IUCLabs/golib v0.3.0
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-jose/go-jose/v4 v4.1.6
