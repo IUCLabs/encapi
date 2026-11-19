@@ -4,10 +4,6 @@ RUN apk add --no-cache git
 
 WORKDIR /build
 
-# golib is fetched straight from Gitea (git is installed above for it); the
-# public proxy and sum db have no view of git.example.com modules.
-ENV GOPRIVATE=git.example.com
-
 COPY go.mod go.sum ./
 RUN go mod download
 

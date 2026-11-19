@@ -7,8 +7,6 @@ steps:
     commands:
       - make lint
     environment:
-      # golib lives on Gitea; skip the public proxy/sum db.
-      GOPRIVATE: git.example.com
       GOCACHE_S3_BUCKET: gocache
       GOCACHE_S3_REGION: us-east-1
       GOCACHE_S3_ENDPOINT_URL: https://s3.example.com
@@ -37,8 +35,6 @@ steps:
       # they run in the docker-e2e path / locally.
       - make test-short
     environment:
-      # golib lives on Gitea; skip the public proxy/sum db.
-      GOPRIVATE: git.example.com
       GOCACHE_S3_BUCKET: gocache
       GOCACHE_S3_REGION: us-east-1
       GOCACHE_S3_ENDPOINT_URL: https://s3.example.com
