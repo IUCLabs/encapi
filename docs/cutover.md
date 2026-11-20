@@ -37,9 +37,8 @@ creates the derived status, role, and node.
 
 ## 2. Repoint the exec ENC (`profiles::puppet::cobbler_enc`)
 
-Install the CLI RPM on the puppet masters (it ships `encapi-cli`,
-`/usr/local/bin/encapi-enc`, and `/etc/encapi/enc.conf`), set
-`ENCAPI_URL` in `/etc/encapi/enc.conf`, and point Puppet at the wrapper:
+No `encapi-cli` RPM is published any more; `encapic` is the ENC client used
+on every puppet master. The original exec wrapper setup was:
 
 ```
 node_terminus  = exec

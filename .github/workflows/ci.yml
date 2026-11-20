@@ -62,3 +62,4 @@ jobs:
         env:
           GOTOOLCHAIN: auto
           KO_DOCKER_REPO: ghcr.io/iuclabs/encapi
+          VERSION: ci-${{ github.sha }}
