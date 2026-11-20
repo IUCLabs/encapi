@@ -22,6 +22,8 @@ jobs:
       - run: |
           go install github.com/google/ko@v0.19.1
           go install github.com/google/go-containerregistry/cmd/crane@v0.22.1
+        env:
+          GOTOOLCHAIN: auto
       - run: echo "${GITHUB_TOKEN}" | crane auth login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
