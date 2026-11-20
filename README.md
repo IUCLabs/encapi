@@ -10,7 +10,7 @@ keeping Puppet's node-classification contract byte-compatible.
 |-----------------|-----------------------------------------------------------------------|
 | `encapi`        | HTTP server: serves ENC documents + a read/write API. Postgres-backed. |
 | `encapi-cli`    | CLI over the API. `encapi-cli classify <host>` is the Puppet ENC.      |
-| `encapi-enc`    | Thin wrapper (shipped in the RPM) for Puppet's `external_nodes`.       |
+| `encapi-enc`    | Thin wrapper for Puppet's `external_nodes`.                            |
 
 The Terraform provider lives in a sibling repo:
 [`terraform-provider-encapi`](https://git.example.com/example/terraform-provider-encapi).
@@ -130,9 +130,6 @@ make test-short               # skip container-backed DB tests
 
 ## Releases
 
-Tagging `vX.Y.Z` (`make patch|minor|major`) runs GoReleaser on GitHub Actions:
-
-- **`encapi` server image** — `ghcr.io/iuclabs/encapi:{tag,latest}` (distroless, built with ko).
-- **`encapi-cli` RPM** — attached to the GitHub release with a signed
-  `SHA256SUMS`. Installs `encapi-cli`, the `encapi-enc` Puppet wrapper, and
-  `/etc/encapi/enc.conf`.
+Tagging `vX.Y.Z` (`make patch|minor|major`) builds the `encapi` server image
+with ko on GitHub Actions and pushes `ghcr.io/iuclabs/encapi:{tag,latest}`
+(distroless).

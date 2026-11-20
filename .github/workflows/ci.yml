@@ -62,4 +62,3 @@ jobs:
         env:
           GOTOOLCHAIN: auto
           KO_DOCKER_REPO: ghcr.io/iuclabs/encapi
-          KO_DEFAULTBASEIMAGE: gcr.io/distroless/static-debian12:nonroot

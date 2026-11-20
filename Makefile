@@ -1,4 +1,4 @@
-.PHONY: build build-server build-cli test test-short lint fmt e2e docker compose clean tidy rpm check-go patch minor major
+.PHONY: build build-server build-cli test test-short lint fmt e2e docker compose clean tidy check-go patch minor major
 
 MODULE  := github.com/IUCLabs/encapi
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.0.0-dev")
@@ -41,10 +41,6 @@ docker:
 
 compose:
 	docker compose up -d
-
-# Local snapshot of the release: encapi-cli RPM + encapi image (needs Docker).
-rpm:
-	GOTOOLCHAIN=auto go run github.com/goreleaser/goreleaser/v2@v2.20.2 release --snapshot --clean --skip=sign
 
 clean:
 	rm -rf bin/ $(DIST)/
