@@ -130,8 +130,9 @@ make test-short               # skip container-backed DB tests
 
 ## Releases
 
-- **`encapi` server image** — tagging `vX.Y.Z` builds and pushes
-  `artifactapi.example.com/docker-internal/encapi:{tag,latest}` (distroless).
-- **`encapi-cli` RPM** — the same tag builds an RPM (nfpm) and publishes it to
-  the ArtifactAPI `rpm-internal` repo. Installs `encapi-cli`, the `encapi-enc`
-  Puppet wrapper, and `/etc/encapi/enc.conf`.
+Tagging `vX.Y.Z` (`make patch|minor|major`) runs GoReleaser on GitHub Actions:
+
+- **`encapi` server image** — `ghcr.io/iuclabs/encapi:{tag,latest}` (distroless, built with ko).
+- **`encapi-cli` RPM** — attached to the GitHub release with a signed
+  `SHA256SUMS`. Installs `encapi-cli`, the `encapi-enc` Puppet wrapper, and
+  `/etc/encapi/enc.conf`.
