@@ -1,8 +1,5 @@
 /bin/
 /dist/
-*.rpm
 *.zip
-# Root-level dev binaries only — anchored so cmd/encapi and cmd/encapi-cli
-# (the source packages) are NOT ignored.
+# Root-level dev binary only — anchored so cmd/encapi is NOT ignored.
 /encapi
-/encapi-cli

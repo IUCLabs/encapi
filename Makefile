@@ -1,10 +1,7 @@
-.PHONY: build build-server build-cli test test-short lint fmt e2e docker compose clean tidy check-go patch minor major
+.PHONY: build build-server test test-short lint fmt e2e docker compose clean tidy check-go patch minor major
 
 MODULE  := github.com/IUCLabs/encapi
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.0.0-dev")
-DIST    := dist
-OS      ?= $(shell go env GOOS)
-ARCH    ?= $(shell go env GOARCH)
 
 GO_VERSION_REQUIRED := 1.23
 GO_VERSION_ACTUAL := $(shell go version | sed 's/go version go\([0-9]*\.[0-9]*\).*/\1/')
@@ -14,13 +11,10 @@ check-go:
 		echo "ERROR: Go >= $(GO_VERSION_REQUIRED) required, found $(GO_VERSION_ACTUAL)"; exit 1; \
 	fi
 
-build: build-server build-cli
+build: build-server
 
 build-server: check-go tidy
 	go build -ldflags="-s -w -X main.version=$(VERSION)" -o bin/encapi ./cmd/encapi
-
-build-cli: check-go
-	CGO_ENABLED=0 GOOS=$(OS) GOARCH=$(ARCH) go build -ldflags="-s -w -X main.version=$(VERSION)" -o $(DIST)/encapi-cli ./cmd/encapi-cli
 
 # Full suite, including the Postgres testcontainers integration tests (needs Docker).
 test: check-go
@@ -28,7 +22,7 @@ test: check-go
 
 # Fast suite: skips the database package's container-backed tests.
 test-short: check-go
-	go test -race -count=1 ./internal/auth/... ./internal/config/... ./internal/enc/... ./internal/distro/... ./internal/server/... ./internal/cli/... ./migrations/... ./pkg/...
+	go test -race -count=1 ./internal/auth/... ./internal/config/... ./internal/enc/... ./internal/distro/... ./internal/server/... ./migrations/... ./pkg/...
 
 lint: check-go
 	go vet ./...
@@ -43,7 +37,7 @@ compose:
 	docker compose up -d
 
 clean:
-	rm -rf bin/ $(DIST)/
+	rm -rf bin/
 
 tidy:
 	go mod tidy

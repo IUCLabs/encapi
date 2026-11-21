@@ -1,5 +1,5 @@
-// Package models holds the wire types shared between the encapi server, the
-// encapi-cli client, and (via the generated client) the Terraform provider.
+// Package models holds the encapi API wire types, mirrored by the Terraform
+// provider.
 package models
 
 // Role is a Puppet class assignment target, e.g. "roles::infra::storage::vault".
