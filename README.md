@@ -112,6 +112,7 @@ make test-short               # skip container-backed DB tests
 
 ## Releases
 
-Tagging `vX.Y.Z` (`make patch|minor|major`) builds the `encapi` server image
+`make patch|minor|major` publishes the GitHub release `vX.Y.Z` with generated
+notes and pushes the tag, which builds the `encapi` server image
 with ko on GitHub Actions and pushes `ghcr.io/iuclabs/encapi:{tag,latest}`
 (distroless).
