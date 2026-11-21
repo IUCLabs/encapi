@@ -24,29 +24,22 @@ encapi serves drop-in replacements for **both**.
 
 ## 1. Seed encapi from the current estate
 
-```bash
-export ENCAPI_URL=https://encapi.example.com
-export ENCAPI_WRITE_TOKEN=…
-encapi-cli import-cobbler --dry-run     # review
-encapi-cli import-cobbler               # writes statuses, roles, nodes
-```
-
-`import-cobbler` lists hosts from PuppetDB
-(`http://puppetdb.example.com:8080`), reads each host's Cobbler ENC, and
-creates the derived status, role, and node.
+Create the statuses, roles, and nodes derived from each host's Cobbler ENC
+through the write API (`PUT /api/v1/{statuses,roles,nodes}/…`) or the
+Terraform provider.
 
 ## 2. Repoint the exec ENC (`profiles::puppet::cobbler_enc`)
 
-No `encapi-cli` RPM is published any more; `encapic` is the ENC client used
-on every puppet master. The original exec wrapper setup was:
+[`encapic`](https://github.com/IUCLabs/encapic) is the ENC client on every
+puppet master:
 
 ```
 node_terminus  = exec
-external_nodes = /usr/local/bin/encapi-enc
+external_nodes = /usr/bin/encapic-enc
 ```
 
-`encapi-enc <certname>` runs `encapi-cli classify <certname>`, which returns the
-identical reshaped document (`GET /api/v1/nodes/<certname>/enc`).
+`encapic <certname>` fetches the cobbler-wire document from encapi and
+reshapes it exactly as `cobbler-enc` did.
 
 ## 3. Repoint the `enc_direct_facts.rb` fact
 
@@ -69,7 +62,7 @@ diff <(curl -s "http://cobbler.int.example.net/cblr/svc/op/puppet/hostname/$H") 
      <(curl -s "https://encapi.example.com/cblr/svc/op/puppet/hostname/$H")
 
 diff <(/opt/cobbler-enc/cobbler-enc "$H") \
-     <(encapi-cli classify "$H")
+     <(encapic "$H")
 ```
 
 The `classes`/`environment`/`enc_role`/`enc_env` fields must match. (Cobbler's

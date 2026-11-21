@@ -9,9 +9,8 @@ keeping Puppet's node-classification contract byte-compatible.
 | Binary          | What it is                                                            |
 |-----------------|-----------------------------------------------------------------------|
 | `encapi`        | HTTP server: serves ENC documents + a read/write API. Postgres-backed. |
-| `encapi-cli`    | CLI over the API. `encapi-cli classify <host>` is the Puppet ENC.      |
-| `encapi-enc`    | Thin wrapper for Puppet's `external_nodes`.                            |
 
+The Puppet ENC client is [`encapic`](https://github.com/IUCLabs/encapic).
 The Terraform provider lives in a sibling repo:
 [`terraform-provider-encapi`](https://git.example.com/example/terraform-provider-encapi).
 
@@ -54,7 +53,7 @@ one.
 - **`GET /api/v1/nodes/{certname}/enc`** — the reshaped document Puppet's
   `exec` terminus consumes: `classes` as a list, `environment` dropped when it
   is `testing`, and `parameters` carrying `enc_role` (list) + `enc_env`. This is
-  what `encapi-cli classify` prints.
+  what `encapic` prints.
 - **`GET /cblr/svc/op/puppet/hostname/{certname}`** — the cobbler-wire form
   (`classes` as a map, `environment` always present), so the legacy
   `enc_direct_facts.rb` fact can be repointed with only a URL change.
@@ -102,23 +101,6 @@ GET    /api/v1/statuses    ... /statuses/{name}   (PUT/DELETE token)
 | `ENCAPI_DISTRO_API_URL`| *(unset)*     | optional kickstart/distro API for provisioning params |
 
 With neither `ENCAPI_WRITE_TOKEN` nor `ENCAPI_OIDC_ISSUER` set, writes are refused (read-only).
-
-## CLI
-
-```bash
-export ENCAPI_URL=https://encapi.example.com
-export ENCAPI_WRITE_TOKEN=…            # static token or Vault identity JWT; only needed for writes
-
-encapi-cli status set production
-encapi-cli role set roles::infra::storage::minio --param 'replicas=4' --param 'epel="9"'
-encapi-cli node set host2100.int.example.net --role roles::infra::storage::minio --env production
-encapi-cli node set-env host2100.int.example.net testing
-encapi-cli classify host2100.int.example.net
-
-# one-shot migration from the live Cobbler estate:
-encapi-cli import-cobbler --dry-run
-encapi-cli import-cobbler
-```
 
 ## Local development
 
